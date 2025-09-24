@@ -13,10 +13,10 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/auth/login`, {
+      const response = await axios.post('https://saasbackend-qrxldqhsg-venkat-nithin-ms-projects.vercel.app/auth/login', {
         email,
         password
-      });
+    });
 
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('userData', JSON.stringify(response.data.userData));
