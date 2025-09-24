@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import InviteUserForm from '../components/InviteUserForm'; // Import the new component
 
 const NotesPage = () => {
   const [notes, setNotes] = useState([]);
@@ -8,6 +9,7 @@ const NotesPage = () => {
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
   const [tenant, setTenant] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false); // New state for role
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
@@ -16,6 +18,7 @@ const NotesPage = () => {
     const userData = JSON.parse(localStorage.getItem('userData'));
     if (userData) {
       setTenant(userData.tenant);
+      setIsAdmin(userData.role === 'Admin'); // Set isAdmin state
     }
   }, []);
 
@@ -27,7 +30,6 @@ const NotesPage = () => {
       setNotes(response.data);
     } catch (err) {
       if (err.response && err.response.status === 401) {
-        // Token expired or invalid, navigate to login
         localStorage.clear();
         navigate('/');
       }
@@ -38,8 +40,7 @@ const NotesPage = () => {
   const handleCreateNote = async (e) => {
     e.preventDefault();
     setError('');
-    
-    // Check if the user is on the free plan and has reached the note limit
+
     if (tenant && tenant.subscriptionPlan === 'Free' && notes.length >= 3) {
       setError('Free plan limit reached. Upgrade to Pro for unlimited notes.');
       return;
@@ -51,7 +52,7 @@ const NotesPage = () => {
       });
       setTitle('');
       setContent('');
-      fetchNotes(); // Refresh the list
+      fetchNotes();
     } catch (err) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
@@ -66,7 +67,7 @@ const NotesPage = () => {
       await axios.delete(`${import.meta.env.VITE_API_URL}/notes/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      fetchNotes(); // Refresh the list
+      fetchNotes();
     } catch (err) {
       setError('Failed to delete note.');
     }
@@ -78,13 +79,12 @@ const NotesPage = () => {
       setError('Only Admin users can upgrade subscriptions.');
       return;
     }
-    
+
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/tenants/${userData.tenant.slug}/upgrade`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      // Update local storage and state to reflect the new plan
+
       const updatedUserData = { ...userData, tenant: { ...userData.tenant, subscriptionPlan: 'Pro' } };
       localStorage.setItem('userData', JSON.stringify(updatedUserData));
       setTenant(updatedUserData.tenant);
@@ -98,6 +98,10 @@ const NotesPage = () => {
     }
   };
 
+  const onUserInvited = () => {
+      console.log('User invited. Check the database for the new user.');
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -107,16 +111,16 @@ const NotesPage = () => {
             <h3>Tenant: {tenant.name}</h3>
             <p>Plan: {tenant.subscriptionPlan}</p>
             {tenant.subscriptionPlan === 'Free' && (
-              <button onClick={handleUpgrade} disabled={JSON.parse(localStorage.getItem('userData')).role !== 'Admin'}>
-                {JSON.parse(localStorage.getItem('userData')).role !== 'Admin' ? 'Upgrade (Admin Only)' : 'Upgrade to Pro'}
+              <button onClick={handleUpgrade} disabled={!isAdmin}>
+                {isAdmin ? 'Upgrade to Pro' : 'Upgrade (Admin Only)'}
               </button>
             )}
           </div>
         )}
       </div>
-      
+
       {error && <p style={{ color: 'red' }}>{error}</p>}
-      
+
       <h3>Create New Note</h3>
       <form onSubmit={handleCreateNote}>
         <div>
@@ -154,6 +158,11 @@ const NotesPage = () => {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* New invite user form */}
+      {isAdmin && (
+          <InviteUserForm token={token} onUserInvited={onUserInvited} />
       )}
     </div>
   );
