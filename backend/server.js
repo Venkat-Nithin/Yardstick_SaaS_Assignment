@@ -6,8 +6,16 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Explicit CORS configuration to allow all origins
+const corsOptions = {
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+};
+app.use(cors(corsOptions));
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 
 // Database connection
